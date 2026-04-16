@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent Auth Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .active { color: green; font-weight: bold; }
+        .revoked { color: red; font-weight: bold; }
+        button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Agent Auth Dashboard</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Created By</th>
+                <th>Created At</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% agents.forEach(agent => { %>
+            <tr>
+                <td><%= agent.id %></td>
+                <td><%= agent.name %></td>
+                <td><%= agent.description || '-' %></td>
+                <td class="<%= agent.status %>"><%= agent.status %></td>
+                <td><%= agent.createdBy %></td>
+                <td><%= new Date(agent.createdAt).toLocaleString() %></td>
+                <td>
+                    <% if (agent.status === 'active') { %>
+                    <button onclick="revokeAgent('<%= agent.id %>')">Revoke</button>
+                    <% } else { %>
+                    Revoked
+                    <% } %>
+                </td>
+            </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <script>
+        async function revokeAgent(agentId) {
+            if (!confirm('Revoke this agent? Kill switch will activate immediately.')) return;
+            try {
+                const response = await fetch(`/api/agents/revoke/${agentId}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Agent revoked successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Request failed');
+            }
+        }
+    </script>
+</body>
+</html>

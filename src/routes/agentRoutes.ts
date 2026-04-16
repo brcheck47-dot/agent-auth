@@ -4,6 +4,7 @@ import { PrismaMssql } from '@prisma/adapter-mssql';
 import sql from 'mssql';
 import jwt from 'jsonwebtoken';
 import { getEntraTokenForAgent } from '../services/entraAuthService';   // 👈 Add this
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -74,6 +75,9 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+router.get('/me', authMiddleware, async (req, res) => {
+  res.json({ success: true, agent: (req as any).agent });
+});
 
 // POST /api/agents/revoke/:agentId
 router.post('/revoke/:agentId', async (req, res) => {
@@ -88,5 +92,6 @@ router.post('/revoke/:agentId', async (req, res) => {
   await prisma.$disconnect();
   res.json({ success: true, message: 'Agent revoked' });
 });
+
 
 export default router;
