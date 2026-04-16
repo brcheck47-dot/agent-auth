@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaMssql } from '@prisma/adapter-mssql';
 import sql from 'mssql';
 import jwt from 'jsonwebtoken';
+import { getEntraTokenForAgent } from '../services/entraAuthService';   // 👈 Add this
 
 const router = Router();
 
@@ -28,7 +29,6 @@ router.post('/register', async (req, res) => {
   try {
     const { name, description, createdBy } = req.body;
 
-    // Basic validation
     if (!name || !createdBy) {
       return res.status(400).json({ error: 'name and createdBy are required' });
     }
@@ -46,13 +46,12 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    // Generate JWT token for the agent
+    // 🔁 NEW: Get Entra ID token instead of JWT
+    const entraToken = await getEntraTokenForAgent(agent.id);
+
+    // Optional: Keep old JWT if you want both
     const token = jwt.sign(
-      { 
-        agentId: agent.id, 
-        name: agent.name,
-        role: 'agent' 
-      },
+      { agentId: agent.id, name: agent.name, role: 'agent' },
       process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );
@@ -67,12 +66,27 @@ router.post('/register', async (req, res) => {
         status: agent.status,
         createdAt: agent.createdAt
       },
-      token
+      token,           // old JWT (optional)
+      entraToken       // new Entra ID token
     });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// POST /api/agents/revoke/:agentId
+router.post('/revoke/:agentId', async (req, res) => {
+  const { agentId } = req.params;
+  const prisma = await getPrismaClient();
+  
+  const agent = await prisma.agent.update({
+    where: { id: agentId },
+    data: { status: 'revoked' }
+  });
+  
+  await prisma.$disconnect();
+  res.json({ success: true, message: 'Agent revoked' });
 });
 
 export default router;
