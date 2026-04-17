@@ -25,9 +25,23 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Prepare deployment package (exclude node_modules)
+        run: |
+          mkdir deploy_temp
+          cp -r dist deploy_temp/
+          cp -r prisma deploy_temp/
+          cp package.json deploy_temp/
+          cp package-lock.json deploy_temp/
+          cp web.config deploy_temp/ 2>/dev/null || true
+          # Create .deployment file to trigger npm install on Azure
+          echo "SCM_DO_BUILD_DURING_DEPLOYMENT=true" > deploy_temp/.deployment
+          cd deploy_temp
+          zip -r ../deploy.zip .
+          cd ..
+
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'agent-auth'
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: .
+          package: deploy.zip
